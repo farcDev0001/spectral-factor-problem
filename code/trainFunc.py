@@ -12,26 +12,26 @@ import joblib
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.ensemble import RandomForestRegressor
 import numpy as np
+from sklearn.metrics import mean_absolute_error
+
 
 def getLocalDaskCLusterRyzen():
     return Client(n_workers=4, threads_per_worker=4, memory_limit='3.5GB')
     
 
 def getData():
-    data= pd.read_csv('../input/especNum.csv')
+    data= dd.read_csv('../input/especNum.csv')
     X_train, X_test, y_train, y_test = daskSplit(data.drop(columns='sf'), data.sf,test_size=0.2)
-    return X_train, X_test, y_train, y_test
+    return X_train.compute(), X_test.compute(), y_train.compute(), y_test.compute()
 
-def crossValidation(model,X_train,y_Train,timeCompute=5):
+'''def crossValidation(model,X_train,y_Train,timeCompute=5):
     scores = cross_val_score(model, X_train, y_Train, cv=timeCompute)
-    return "Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2)
-
-
+    return "Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2)'''
 
 def linearReg(X_train, X_test, y_train, y_test):
     model= lm.LinearRegression().fit(X_train,y_train)
-    return {'model':model,'name':'LinearRegression','Accuracy':model.score(X_test, y_test)}
-
+    return {'model':model,'R**2':model.score(X_test,y_test)}
+    
 def forestReg(X_train, X_test, y_train, y_test):
     model= RandomForestRegressor(max_depth=2, random_state=0,n_estimators=1000).fit(X_train,y_train)
     return {'model':model,'name':'ramdomForestReg','Accuracy':model.score(X_test, y_test)}
@@ -61,7 +61,8 @@ def createRamdomForestGrid():
     return random_grid
 
 def ramdomSearchCvpandas(model,ramdom_grid,X_train,y_train):
-    gridModel= RandomizedSearchCV(estimator = model, param_distributions =ramdom_grid, n_iter = 200, cv = 3, verbose=2, random_state=42, n_jobs = -1)
+    gridModel= RandomizedSearchCV(estimator = model, param_distributions =ramdom_grid, n_iter = 100, 
+    cv = 3, verbose=2, random_state=42, n_jobs = 8)
     gridModel.fit(X_train,y_train)
     return gridModel.best_params_
 
@@ -77,18 +78,18 @@ def ARMRe(X_train, X_test, y_train, y_test):
 def searchModel():
     X_train, X_test, y_train, y_test=getData()
     #functions=[linearReg,modelElasticNetCv,ARMRe]
-    #modelNdesc= linearReg(X_train, X_test, y_train, y_test)
+    modelNdesc= linearReg(X_train, X_test, y_train, y_test)
     #modelNdesc= linearReg(X_train, X_test, y_train, y_test)
     #modelNdesc= forestReg(X_train, X_test, y_train, y_test)
-    modelNdesc=ramdomSearchCvpandas(RandomForestRegressor(),createRamdomForestGrid(),X_train,y_train)
+    #modelNdesc=ramdomSearchCvpandas(RandomForestRegressor(),createRamdomForestGrid(),X_train,y_train)
     return modelNdesc
 
 def paralelizeJob():
     client = getLocalDaskCLusterRyzen()
     print(client)
     with joblib.parallel_backend('dask'):
-        modelDic=searchModel()
-    return modelDic
+        
+        return searchModel()
 
 def job():
     modelNdesc=searchModel()
