@@ -3,8 +3,10 @@ import sklearn.linear_model as lm
 from dask.distributed import Client, progress
 from sklearn.metrics import accuracy_score
 import dask.dataframe as dd
-from sklearn.model_selection import train_test_split
-from dask_ml.model_selection import train_test_split
+from sklearn.model_selection import train_test_split as sklearnSplit
+from dask_ml.model_selection import train_test_split as daskSplit
+import dask_ml.model_selection as dcv
+from scipy.stats import expon
 import pandas as pd
 import joblib
 from sklearn.model_selection import RandomizedSearchCV
@@ -17,7 +19,7 @@ def getLocalDaskCLusterRyzen():
 
 def getData():
     data= pd.read_csv('../input/especNum.csv')
-    X_train, X_test, y_train, y_test = train_test_split(data.drop(columns='sf'), data.sf,test_size=0.2)
+    X_train, X_test, y_train, y_test = daskSplit(data.drop(columns='sf'), data.sf,test_size=0.2)
     return X_train, X_test, y_train, y_test
 
 def crossValidation(model,X_train,y_Train,timeCompute=5):
@@ -58,8 +60,13 @@ def createRamdomForestGrid():
                'bootstrap': bootstrap}
     return random_grid
 
-def ramdomSearchCv(model,ramdom_grid,X_train,y_train):
-    gridModel= RandomizedSearchCV(estimator = model, param_distributions =ramdom_grid, n_iter = 200, cv = 3, verbose=2, random_state=42)
+def ramdomSearchCvpandas(model,ramdom_grid,X_train,y_train):
+    gridModel= RandomizedSearchCV(estimator = model, param_distributions =ramdom_grid, n_iter = 200, cv = 3, verbose=2, random_state=42, n_jobs = -1)
+    gridModel.fit(X_train,y_train)
+    return gridModel.best_params_
+
+def ramdomSearchCvDask(model,ramdom_grid,X_train,y_train):
+    gridModel= dcv.RandomizedSearchCV(model, ramdom_grid, n_iter=100)
     gridModel.fit(X_train,y_train)
     return gridModel.best_params_
 
@@ -73,7 +80,7 @@ def searchModel():
     #modelNdesc= linearReg(X_train, X_test, y_train, y_test)
     #modelNdesc= linearReg(X_train, X_test, y_train, y_test)
     #modelNdesc= forestReg(X_train, X_test, y_train, y_test)
-    modelNdesc=ramdomSearchCv(RandomForestRegressor(),createRamdomForestGrid(),X_train,y_train)
+    modelNdesc=ramdomSearchCvpandas(RandomForestRegressor(),createRamdomForestGrid(),X_train,y_train)
     return modelNdesc
 
 def paralelizeJob():
@@ -82,4 +89,10 @@ def paralelizeJob():
     with joblib.parallel_backend('dask'):
         modelDic=searchModel()
     return modelDic
+
+def job():
+    modelNdesc=searchModel()
+    return modelNdesc
+
+
 
