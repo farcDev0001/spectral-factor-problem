@@ -107,3 +107,6 @@ venv.bak/
 input/
 output/
 code/forest.py
+
+code/dask-worker-space/
+code/pruebas.ipynb
