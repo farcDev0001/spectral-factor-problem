@@ -1,22 +1,18 @@
-from sklearn.model_selection import cross_val_score
 import sklearn.linear_model as lm
+from sklearn.ensemble import RandomForestRegressor
 from dask.distributed import Client, progress
-from sklearn.metrics import accuracy_score
 import dask.dataframe as dd
 from sklearn.model_selection import train_test_split as sklearnSplit
 from dask_ml.model_selection import train_test_split as daskSplit
-import dask_ml.model_selection as dcv
-from scipy.stats import expon
 import pandas as pd
 import joblib
-from sklearn.model_selection import RandomizedSearchCV
-
 import numpy as np
-from sklearn.metrics import mean_absolute_error
 
 
 def getLocalDaskCLusterRyzen():
-    return Client(n_workers=4, threads_per_worker=4, memory_limit='3.5GB')
+    client= Client(n_workers=4, threads_per_worker=4, memory_limit='11GB')
+    print(client)
+    return client
     
 
 def getData():
@@ -24,41 +20,85 @@ def getData():
     X_train, X_test, y_train, y_test = daskSplit(data.drop(columns='sf'), data.sf,test_size=0.2)
     return X_train.compute(), X_test.compute(), y_train.compute(), y_test.compute()
 
-'''def crossValidation(model,X_train,y_Train,timeCompute=5):
-    scores = cross_val_score(model, X_train, y_Train, cv=timeCompute)
-    return "Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2)'''
 
 def linearReg(X_train, X_test, y_train, y_test):
     model= lm.LinearRegression().fit(X_train,y_train)
     return {'model':model,'R**2':model.score(X_test,y_test)}
     
 
-
-
-
 def ARMRe(X_train, X_test, y_train, y_test):
     model= lm.ARDRegression().fit(X_train,y_train)
-    return {'model':model,'name':'LinearRegression','Accuracy':model.score(X_test, y_test)}
+    return {'model':model,'R**2':model.score(X_test, y_test)}
 
-def searchModel():
-    X_train, X_test, y_train, y_test=getData()
-    #functions=[linearReg,modelElasticNetCv,ARMRe]
-    modelNdesc= linearReg(X_train, X_test, y_train, y_test)
-    #modelNdesc= linearReg(X_train, X_test, y_train, y_test)
-    #modelNdesc= forestReg(X_train, X_test, y_train, y_test)
-    #modelNdesc=ramdomSearchCvpandas(RandomForestRegressor(),createRamdomForestGrid(),X_train,y_train)
-    return modelNdesc
+def forestReg(X_train, X_test, y_train, y_test):
+    model= RandomForestRegressor(max_depth=2, random_state=0,n_estimators=1000).fit(X_train,y_train)
+    return {'model':model,'R**2':model.score(X_test, y_test)}
 
-def paralelizeJob():
-    client = getLocalDaskCLusterRyzen()
-    print(client)
+def createRamdomForestGrid():
+    # numero árboles
+    n_estimators = [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)]
+    # numero features
+    max_features = ['auto', 'sqrt']
+    # Número máximo de niveles en el árbol
+    max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
+    max_depth.append(None)
+    # Número mínimo de muestras requeridas para dividir un nodo
+    min_samples_split = [2, 5, 10]
+    # Numero mínimo de muestras requeridas para cada nodo
+    min_samples_leaf = [1, 2, 4]
+    # Metodo de selección de muestras para entrenar cada árbol
+    bootstrap = [True, False]
+
+    # Crear el cuadro
+    random_grid = {'n_estimators': n_estimators,
+               'max_features': max_features,
+               'max_depth': max_depth,
+               'min_samples_split': min_samples_split,
+               'min_samples_leaf': min_samples_leaf,
+               'bootstrap': bootstrap}
+    return random_grid
+
+def searchBestForest(params,X_train, X_test, y_train, y_test,client):
+    c=client
+    print(c)
     with joblib.parallel_backend('dask'):
-        
-        return searchModel()
+        model=RandomForestRegressor(bootstrap=True, criterion='mse', max_depth=10,
+                        max_features='auto', max_leaf_nodes=None,
+                        min_impurity_decrease=0.0, min_impurity_split=None,
+                        min_samples_leaf=1, min_samples_split=2,
+                        min_weight_fraction_leaf=0.0, n_estimators=200,
+                        n_jobs=None, oob_score=False, random_state=None,
+                        verbose=0, warm_start=False)
+        model.fit(X_train,y_train)
+        bestMod={'model':model,'R**2':model.score(X_test, y_test)}
+        print(bestMod)
+        for estimators in params['n_estimators']:
+            for features in params['max_features']:
+                for dep in params['max_depth']:
+                    for samples in params['min_samples_split']:
+                        for samplesL in params['min_samples_leaf']:
+                            for boot in params['bootstrap']:
+                                model=RandomForestRegressor(bootstrap=boot, criterion='mse', max_depth=dep,
+                                max_features=features, max_leaf_nodes=None,
+                                min_impurity_decrease=0.0, min_impurity_split=None,
+                                min_samples_leaf=samplesL, min_samples_split=samples,
+                                min_weight_fraction_leaf=0.0, n_estimators=estimators,
+                                n_jobs=None, oob_score=False, random_state=None,
+                                verbose=0, warm_start=False)
+                                model.fit(X_train,y_train)
+                                if model.score(X_test, y_test)>bestMod['R**2']:
+                                    bestMod={'model':model,'R**2':model.score(X_test, y_test)}
+                                    print({'model':model,'R**2':model.score(X_test, y_test)})
+                                del model
 
-def job():
-    modelNdesc=searchModel()
-    return modelNdesc
+def paralelizeJobWhithDaskClient(function,client):
+    c = client
+    print(c)
+    with joblib.parallel_backend('dask'):
+        function()
+        
+
+
 
 
 
