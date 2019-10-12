@@ -112,3 +112,4 @@ code/dask-worker-space/
 code/pruebas.ipynb
 code/ignore.ipynb
 pandas/
+output/

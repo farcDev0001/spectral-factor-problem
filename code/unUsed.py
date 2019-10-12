@@ -29,7 +29,3 @@ def ramdomSearchCvpandas(model,ramdom_grid,X_train,y_train):
     gridModel.fit(X_train,y_train)
     return gridModel.best_params_
 
-def ramdomSearchCvDask(model,ramdom_grid,X_train,y_train):
-    gridModel= dcv.RandomizedSearchCV(model, ramdom_grid, n_iter=100)
-    gridModel.fit(X_train,y_train)
-    return gridModel.best_params_

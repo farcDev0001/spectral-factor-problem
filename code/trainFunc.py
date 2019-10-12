@@ -16,8 +16,8 @@ def getLocalDaskCLusterRyzen():
     
 
 def getData():
-    data= dd.read_csv('../input/especNum.csv')
-    X_train, X_test, y_train, y_test = daskSplit(data.drop(columns='sf'), data.sf,test_size=0.2)
+    data= dd.read_csv('../input/especNum.csv').drop(columns='Unnamed: 0')
+    X_train, X_test, y_train, y_test = daskSplit(data.drop(columns='sf'), data.sf,test_size=0.4)
     return X_train.compute(), X_test.compute(), y_train.compute(), y_test.compute()
 
 
@@ -36,7 +36,7 @@ def forestReg(X_train, X_test, y_train, y_test):
 
 def createRamdomForestGrid():
     # numero árboles
-    n_estimators = [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)]
+    n_estimators = [int(x) for x in np.linspace(start = 200, stop = 400, num = 10)]
     # numero features
     max_features = ['auto', 'sqrt']
     # Número máximo de niveles en el árbol
@@ -61,6 +61,9 @@ def createRamdomForestGrid():
 def searchBestForest(params,X_train, X_test, y_train, y_test,client):
     c=client
     print(c)
+    file=open('../output/200a400.txt','w')
+    file.write('200 a 400 estimadores\n')
+    file.write('\n\n')
     with joblib.parallel_backend('dask'):
         model=RandomForestRegressor(bootstrap=True, criterion='mse', max_depth=10,
                         max_features='auto', max_leaf_nodes=None,
@@ -71,25 +74,36 @@ def searchBestForest(params,X_train, X_test, y_train, y_test,client):
                         verbose=0, warm_start=False)
         model.fit(X_train,y_train)
         bestMod={'model':model,'R**2':model.score(X_test, y_test)}
+        file.write(str(bestMod)+'\n')
+        contador=1
         print(bestMod)
-        for estimators in params['n_estimators']:
-            for features in params['max_features']:
-                for dep in params['max_depth']:
-                    for samples in params['min_samples_split']:
-                        for samplesL in params['min_samples_leaf']:
-                            for boot in params['bootstrap']:
-                                model=RandomForestRegressor(bootstrap=boot, criterion='mse', max_depth=dep,
-                                max_features=features, max_leaf_nodes=None,
-                                min_impurity_decrease=0.0, min_impurity_split=None,
-                                min_samples_leaf=samplesL, min_samples_split=samples,
-                                min_weight_fraction_leaf=0.0, n_estimators=estimators,
-                                n_jobs=None, oob_score=False, random_state=None,
-                                verbose=0, warm_start=False)
-                                model.fit(X_train,y_train)
-                                if model.score(X_test, y_test)>bestMod['R**2']:
-                                    bestMod={'model':model,'R**2':model.score(X_test, y_test)}
-                                    print({'model':model,'R**2':model.score(X_test, y_test)})
-                                del model
+        try:
+            for estimators in params['n_estimators']:
+                for features in params['max_features']:
+                    for dep in params['max_depth']:
+                        for samples in params['min_samples_split']:
+                            for samplesL in params['min_samples_leaf']:
+                                for boot in params['bootstrap']:
+                                    model=RandomForestRegressor(bootstrap=boot, criterion='mse', max_depth=dep,
+                                    max_features=features, max_leaf_nodes=None,
+                                    min_impurity_decrease=0.0, min_impurity_split=None,
+                                    min_samples_leaf=samplesL, min_samples_split=samples,
+                                    min_weight_fraction_leaf=0.0, n_estimators=estimators,
+                                    n_jobs=None, oob_score=False, random_state=None,
+                                    verbose=0, warm_start=False)
+                                    model.fit(X_train,y_train)
+                                    if model.score(X_test, y_test)>bestMod['R**2']:
+                                        bestMod={'model':model,'R**2':model.score(X_test, y_test)}
+                                        print({'model':model,'R**2':model.score(X_test, y_test)})
+                                        file.write(str(bestMod)+'\n')
+                                        contador+=1
+                                    del model
+            file.write('numero de modelos en archivo: {}'.format(contador))
+            file.close()
+        except:
+            file.write('numero de modelos en archivo: {}'.format(contador))
+            file.close()
+            
 
 def paralelizeJobWhithDaskClient(function,client):
     c = client
