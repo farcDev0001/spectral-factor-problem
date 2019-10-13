@@ -7,6 +7,7 @@ from dask_ml.model_selection import train_test_split as daskSplit
 import pandas as pd
 import joblib
 import numpy as np
+from sklearn.metrics import r2_score
 
 
 def getLocalDaskCLusterRyzen():
@@ -73,7 +74,8 @@ def searchBestForest(params,X_train, X_test, y_train, y_test,client):
                         n_jobs=None, oob_score=False, random_state=None,
                         verbose=0, warm_start=False)
         model.fit(X_train,y_train)
-        bestMod={'model':model,'R**2':model.score(X_test, y_test)}
+        y_pred=model.predict(X_test)
+        bestMod={'model':model,'R2_score':r2_score(y_test, y_pred)}
         file.write(str(bestMod)+'\n')
         contador=1
         print(bestMod)
@@ -92,10 +94,13 @@ def searchBestForest(params,X_train, X_test, y_train, y_test,client):
                                     n_jobs=None, oob_score=False, random_state=None,
                                     verbose=0, warm_start=False)
                                     model.fit(X_train,y_train)
-                                    if model.score(X_test, y_test)>bestMod['R**2']:
-                                        bestMod={'model':model,'R**2':model.score(X_test, y_test)}
-                                        print({'model':model,'R**2':model.score(X_test, y_test)})
+                                    y_pred=model.predict(X_test)
+                                    r2=r2_score(y_test, y_pred)
+                                    if r2>bestMod['R2_score']:
+                                        bestMod={'model':model,'R2_score':r2}
+                                        print(bestMod)
                                         file.write(str(bestMod)+'\n')
+                                        file.write('\n')
                                         contador+=1
                                     del model
             file.write('numero de modelos en archivo: {}'.format(contador))
