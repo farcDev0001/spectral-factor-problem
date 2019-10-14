@@ -37,7 +37,7 @@ def forestReg(X_train, X_test, y_train, y_test):
 
 def createRamdomForestGrid():
     # numero árboles
-    n_estimators = [int(x) for x in np.linspace(start = 200, stop = 400, num = 10)]
+    n_estimators = [int(x) for x in np.linspace(start = 3, stop = 100, num = 2)]
     # numero features
     max_features = ['auto', 'sqrt']
     # Número máximo de niveles en el árbol
