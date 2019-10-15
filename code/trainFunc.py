@@ -11,7 +11,7 @@ from sklearn.metrics import r2_score
 
 
 def getLocalDaskCLusterRyzen():
-    client= Client(n_workers=4, threads_per_worker=4, memory_limit='11GB')
+    client= Client(n_workers=4, threads_per_worker=3, memory_limit='8GB')
     print(client)
     return client
     
