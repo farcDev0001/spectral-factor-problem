@@ -116,3 +116,5 @@ output/
 
 justificacionModelo.ipynb
 pruebaTensor.ipynb
+bucletensor.ipynb
+dask-worker-space/
