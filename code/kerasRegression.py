@@ -1,7 +1,7 @@
 import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
-from keras import layers
+from tensorflow.keras import layers
 from sklearn.metrics import r2_score
 
 class PrintDot(keras.callbacks.Callback):
@@ -11,7 +11,7 @@ class PrintDot(keras.callbacks.Callback):
 
 def getData():
     data= pd.read_csv('./input/especNum.csv').drop(columns='Unnamed: 0')
-    train_dataset = data.sample(frac=0.7,random_state=None)
+    train_dataset = data.sample(frac=0.2,random_state=None)
     test_dataset = data.drop(train_dataset.index)
     train_labels = train_dataset.pop('sf')
     test_labels = test_dataset.pop('sf')
@@ -40,7 +40,7 @@ def build_model(train_dataset):
 def eternal():
     early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
     EPOCHS = 1000
-    score=99.12
+    score=0.9912
     count=6
     while(True):
         train_dataset, test_dataset, train_labels ,test_labels=getData()
