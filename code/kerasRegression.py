@@ -34,8 +34,8 @@ def build_model(train_dataset):
     layers.Dense(64, activation='relu'),
     layers.Dense(1,activation='linear')])
 
-    optimizer = tf.keras.optimizers.RMSprop(0.001)
-    #optimizer = tf.keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+    #optimizer = tf.keras.optimizers.RMSprop(0.001)
+    optimizer = tf.keras.optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
     #optimizer = tf.keras.optimizers.Adagrad(learning_rate=0.01)
     #optimizer= tf.keras.optimizers.Adadelta(learning_rate=1.0, rho=0.95)
     #optimizer=tf.keras.optimizers.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, amsgrad=False)
@@ -51,12 +51,11 @@ def build_model(train_dataset):
 def eternal():
     early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
     EPOCHS = 1000
-    score=0.9916
-    count=3
+    score=0.0
+    count=1
     scaler=getScaler(pd.read_csv('./input/especNum.csv').drop(columns='Unnamed: 0'))
     while(True):
         train_dataset, test_dataset, train_labels ,test_labels=getData()
-        
         model = build_model(train_dataset)
         train_dataset=scaler.transform(train_dataset)
         test_dataset=scaler.transform(test_dataset)
@@ -68,9 +67,11 @@ def eternal():
         if newScore>score:
             print('YEEEHHHHHHHHHHHHHHHHHHHHH')
             score=newScore
-            model.save('./output/keras/kerasRMSScaler{}.h5'.format(count))
+            model.save('./output/keras/kerasSGDScaler{}.h5'.format(count))
             count+=1
+        elif score==1:
+            raise Exception("APOCALYPSE!!!!!!!")
         del model
 
 
-eternal()  
+

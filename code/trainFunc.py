@@ -108,6 +108,29 @@ def searchBestForest(params,X_train, X_test, y_train, y_test,client):
         except:
             file.write('numero de modelos en archivo: {}'.format(contador))
             file.close()
+
+def getTheForest():
+    count=11
+    while(True):
+        model = RandomForestRegressor(bootstrap=bool, criterion='mse', max_depth=m,
+                      max_features=x, max_leaf_nodes=None,
+                      min_impurity_decrease=x, min_impurity_split=None,
+                      min_samples_leaf=x, min_samples_split=m,
+                      min_weight_fraction_leaf=x, n_estimators=s,
+                      n_jobs=None, oob_score=False, random_state=None,
+                      verbose=x, warm_start=False)
+        
+        data= pd.read_csv('./input/especNum.csv').drop(columns='Unnamed: 0')
+        X_train, X_test, y_train, y_test = train_test_split(data.drop(columns='sf'), data.sf,test_size=0.5)
+        model.fit(X_train,y_train)
+        y_pred= model.predict(X_test)
+        score=r2_score(y_test, y_pred)
+        print(score)
+        if score > 0.0:
+            print(print('YEEEHHHH'))
+            dump(model, './output/forest/forestFitted{}.joblib'.format(count))
+            count+=1
+        del model
             
 
 def paralelizeJobWhithDaskClient(function,client):
